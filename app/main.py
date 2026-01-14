@@ -5,7 +5,6 @@ from app.routes import router as api_router
 from app.common.responses import bad_request, server_error
 from app.common.errors import INVALID_REQUEST, INTERNAL_SERVER_ERROR
 
-
 app = FastAPI(title="Community API")
 
 

@@ -1,5 +1,4 @@
-
-from typing import Any
+from typing import Any, Optional
 from fastapi.responses import JSONResponse
 
 
@@ -11,8 +10,8 @@ def created(message: str, data: Any = None) -> JSONResponse:
     return JSONResponse(status_code=201, content={"message": message, "data": data})
 
 
-def bad_request(message: str) -> JSONResponse:
-    return JSONResponse(status_code=400, content={"message": message, "data": None})
+def bad_request(message: str, data: Any = None) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"message": message, "data": data})
 
 
 def unauthorized(message: str = "unauthorized") -> JSONResponse:

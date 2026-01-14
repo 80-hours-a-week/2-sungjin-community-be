@@ -1,29 +1,31 @@
-
-from __future__ import annotations
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class AppError:
-    status_code: int
+    code: str
     message: str
 
 
-INVALID_REQUEST = AppError(400, "invalid_request")
-MISSING_FIELD = AppError(400, "missing_field")
-INVALID_FIELD = AppError(400, "invalid_field")
+# ----- Common -----
+INVALID_REQUEST = AppError(code="INVALID_REQUEST", message="invalid_request")
+INTERNAL_SERVER_ERROR = AppError(code="INTERNAL_SERVER_ERROR", message="internal_server_error")
 
-EMAIL_ALREADY_EXISTS = AppError(409, "email_already_exists")
-NICKNAME_ALREADY_EXISTS = AppError(409, "nickname_already_exists")
+# ----- Auth / Users -----
+MISSING_REQUIRED_FIELDS = AppError(code="MISSING_REQUIRED_FIELDS", message="missing_required_fields")
+EMAIL_ALREADY_EXISTS = AppError(code="EMAIL_ALREADY_EXISTS", message="email_already_exists")
+NICKNAME_ALREADY_EXISTS = AppError(code="NICKNAME_ALREADY_EXISTS", message="nickname_already_exists")
+EMAIL_NOT_FOUND = AppError(code="EMAIL_NOT_FOUND", message="email_not_found")
+WRONG_PASSWORD = AppError(code="WRONG_PASSWORD", message="wrong_password")
+UNAUTHORIZED = AppError(code="UNAUTHORIZED", message="unauthorized")
+INVALID_TOKEN = AppError(code="INVALID_TOKEN", message="invalid_token")
 
-EMAIL_NOT_FOUND = AppError(400, "email_not_found")
-PASSWORD_MISMATCH = AppError(400, "password_mismatch")
+# ----- Posts -----
+POST_NOT_FOUND = AppError(code="POST_NOT_FOUND", message="post_not_found")
+PAGE_INVALID = AppError(code="PAGE_INVALID", message="page_invalid")
+LIMIT_INVALID = AppError(code="LIMIT_INVALID", message="limit_invalid")
+TITLE_REQUIRED = AppError(code="TITLE_REQUIRED", message="title_required")
+CONTENT_REQUIRED = AppError(code="CONTENT_REQUIRED", message="content_required")
 
-UNAUTHORIZED = AppError(401, "unauthorized")
-FORBIDDEN = AppError(403, "permission_denied")
-
-POST_NOT_FOUND = AppError(404, "post_not_found")
-COMMENT_NOT_FOUND = AppError(404, "comment_not_found")
-USER_NOT_FOUND = AppError(404, "user_not_found")
-
-INTERNAL_SERVER_ERROR = AppError(500, "internal_server_error")
+# ----- Comments -----
+COMMENT_NOT_FOUND = AppError(code="COMMENT_NOT_FOUND", message="comment_not_found")

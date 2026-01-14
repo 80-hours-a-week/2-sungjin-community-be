@@ -1,11 +1,8 @@
-
 from __future__ import annotations
 
 import uuid
 from typing import Dict, Optional
 
-
-# ===== In-memory storage =====
 _users: Dict[int, dict] = {}
 _email_index: Dict[str, int] = {}
 _nickname_index: Dict[str, int] = {}
@@ -14,6 +11,12 @@ _sessions: Dict[str, int] = {}
 _user_seq: int = 1
 
 
+def seed() -> None:
+    
+    if is_email_exists("start@community.com"):
+        return
+    create_user(email="start@community.com", password="start21", nickname="starter")
+
 
 def create_user(email: str, password: str, nickname: str) -> dict:
     global _user_seq
@@ -21,7 +24,7 @@ def create_user(email: str, password: str, nickname: str) -> dict:
     user = {
         "id": _user_seq,
         "email": email,
-        "password": password,  
+        "password": password,
         "nickname": nickname,
     }
 
@@ -52,7 +55,6 @@ def is_nickname_exists(nickname: str) -> bool:
     return nickname in _nickname_index
 
 
-
 def create_session(user_id: int) -> str:
     token = str(uuid.uuid4())
     _sessions[token] = user_id
@@ -65,3 +67,4 @@ def get_user_id_by_token(token: str) -> Optional[int]:
 
 def delete_session(token: str) -> None:
     _sessions.pop(token, None)
+
