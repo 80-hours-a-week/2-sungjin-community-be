@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from fastapi import APIRouter, Header, Query
 from app.controllers import posts_controller
 
