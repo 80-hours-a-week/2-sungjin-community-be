@@ -1,3 +1,4 @@
+
 from typing import Any
 from fastapi.responses import JSONResponse
 
@@ -30,5 +31,5 @@ def conflict(message: str) -> JSONResponse:
     return JSONResponse(status_code=409, content={"message": message, "data": None})
 
 
-def server_error() -> JSONResponse:
-    return JSONResponse(status_code=500, content={"message": "internal_server_error", "data": None})
+def server_error(message: str = "internal_server_error") -> JSONResponse:
+    return JSONResponse(status_code=500, content={"message": message, "data": None})

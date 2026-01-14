@@ -1,10 +1,9 @@
+from __future__ import annotations
+
 from fastapi.responses import JSONResponse
 from app.common.responses import ok, created, bad_request, unauthorized, conflict, server_error
+from app.models import users_model
 
-# stub DB
-USERS = [
-    {"email": "start@community.com", "password": "start21", "nickname": "starter"}
-]
 
 def signup(payload: dict) -> JSONResponse:
     try:
@@ -15,14 +14,15 @@ def signup(payload: dict) -> JSONResponse:
         if not email or not password or not nickname:
             return bad_request("missing_required_fields")
 
-        if any(u["email"] == email for u in USERS):
+        if users_model.is_email_exists(email):
             return conflict("email_already_exists")
 
-        if any(u["nickname"] == nickname for u in USERS):
+        if users_model.is_nickname_exists(nickname):
             return conflict("nickname_already_exists")
 
-        USERS.append({"email": email, "password": password, "nickname": nickname})
+        users_model.create_user(email=email, password=password, nickname=nickname)
         return created("signup_success", None)
+
     except Exception:
         return server_error()
 
@@ -35,18 +35,23 @@ def login(payload: dict) -> JSONResponse:
         if not email or not password:
             return bad_request("missing_required_fields")
 
-        user = next((u for u in USERS if u["email"] == email), None)
+        user = users_model.find_user_by_email(email)
         if user is None:
             return unauthorized("email_not_found")
+
         if user["password"] != password:
             return unauthorized("wrong_password")
+
+        token = users_model.create_session(user_id=user["id"])
 
         posts_preview = [
             {"post_id": 1, "title": "welcome", "author": user["nickname"]},
             {"post_id": 2, "title": "rules", "author": "admin"},
         ]
-        data = {"access_token": "token-1", "token_type": "bearer", "posts": posts_preview}
+
+        data = {"access_token": token, "token_type": "bearer", "posts": posts_preview}
         return ok("login_success", data)
+
     except Exception:
         return server_error()
 
@@ -57,9 +62,13 @@ def logout(authorization: str | None) -> JSONResponse:
             return unauthorized("unauthorized")
 
         token = authorization.split(" ", 1)[1].strip()
-        if token != "token-1":
+
+        user_id = users_model.get_user_id_by_token(token)
+        if user_id is None:
             return unauthorized("invalid_token")
 
+        users_model.delete_session(token)
         return ok("logout_success", None)
+
     except Exception:
         return server_error()

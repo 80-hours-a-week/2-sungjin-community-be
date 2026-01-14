@@ -1,46 +1,54 @@
+from __future__ import annotations
+
 from fastapi.responses import JSONResponse
-from app.common.responses import ok, created, bad_request, unauthorized, forbidden, not_found, server_error
-from app.common.auth import is_authorized
+from app.common.responses import ok, created, bad_request, unauthorized, not_found, forbidden, server_error
+from app.models import posts_model, users_model
 
-POSTS = [
-    {"post_id": 1, "title": "welcome", "content": "hi", "author": "starter"},
-    {"post_id": 2, "title": "rules", "content": "be nice", "author": "admin"},
-]
 
-def list_posts(page: int, limit: int, authorization: str | None) -> JSONResponse:
+def _require_user_id(authorization: str | None) -> int | None:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.split(" ", 1)[1].strip()
+    return users_model.get_user_id_by_token(token)
+
+
+def list_posts(authorization: str | None, page: int = 1, limit: int = 10) -> JSONResponse:
     try:
-        if not is_authorized(authorization):
-            return unauthorized("unauthorized")
+        user_id = _require_user_id(authorization)
+        if user_id is None:
+            return unauthorized("invalid_token")
 
         if page < 1 or limit < 1 or limit > 50:
             return bad_request("invalid_paging_params")
 
-        start = (page - 1) * limit
-        end = start + limit
-        data = {"page": page, "limit": limit, "items": POSTS[start:end]}
-        return ok("read_posts_success", data)
+        posts = posts_model.list_posts(page=page, limit=limit)
+        return ok("read_posts_success", {"items": posts, "page": page, "limit": limit})
+
     except Exception:
         return server_error()
 
 
-def read_post(post_id: int, authorization: str | None) -> JSONResponse:
+def get_post_detail(authorization: str | None, post_id: int) -> JSONResponse:
     try:
-        if not is_authorized(authorization):
-            return unauthorized("unauthorized")
+        user_id = _require_user_id(authorization)
+        if user_id is None:
+            return unauthorized("invalid_token")
 
-        post = next((p for p in POSTS if p["post_id"] == post_id), None)
+        post = posts_model.find_post(post_id)
         if post is None:
             return not_found("post_not_found")
 
         return ok("read_post_success", post)
+
     except Exception:
         return server_error()
 
 
-def create_post(payload: dict, authorization: str | None) -> JSONResponse:
+def create_post(authorization: str | None, payload: dict) -> JSONResponse:
     try:
-        if not is_authorized(authorization):
-            return unauthorized("unauthorized")
+        user_id = _require_user_id(authorization)
+        if user_id is None:
+            return unauthorized("invalid_token")
 
         title = payload.get("title")
         content = payload.get("content")
@@ -49,55 +57,65 @@ def create_post(payload: dict, authorization: str | None) -> JSONResponse:
         if not title or not content:
             return bad_request("missing_required_fields")
 
-        new_id = max(p["post_id"] for p in POSTS) + 1 if POSTS else 1
-        POSTS.append(
-            {"post_id": new_id, "title": title, "content": content, "author": "starter", "image_url": image_url}
+        user = users_model.find_user_by_id(user_id)
+        if user is None:
+            return unauthorized("invalid_token")
+
+        post = posts_model.create_post(
+            title=title,
+            content=content,
+            author_id=user_id,
+            author_nickname=user["nickname"],
+            image_url=image_url,
         )
-        return created("post_created", {"post_id": new_id})
+        return created("create_post_success", {"post_id": post["id"]})
+
     except Exception:
         return server_error()
 
 
-def update_post(post_id: int, payload: dict, authorization: str | None) -> JSONResponse:
+def update_post(authorization: str | None, post_id: int, payload: dict) -> JSONResponse:
     try:
-        if not is_authorized(authorization):
-            return unauthorized("unauthorized")
+        user_id = _require_user_id(authorization)
+        if user_id is None:
+            return unauthorized("invalid_token")
 
-        post = next((p for p in POSTS if p["post_id"] == post_id), None)
+        post = posts_model.find_post(post_id)
         if post is None:
             return not_found("post_not_found")
 
-        if post["author"] != "starter":
+        if post["author_id"] != user_id:
             return forbidden("permission_denied")
 
         title = payload.get("title")
         content = payload.get("content")
-        if not title and not content:
+        image_url = payload.get("image_url")
+
+        if title is None and content is None and image_url is None:
             return bad_request("no_fields_to_update")
 
-        if title:
-            post["title"] = title
-        if content:
-            post["content"] = content
+        posts_model.update_post(post_id, title=title, content=content, image_url=image_url)
+        return ok("update_post_success", None)
 
-        return ok("post_updated", None)
     except Exception:
         return server_error()
 
 
-def delete_post(post_id: int, authorization: str | None) -> JSONResponse:
+def delete_post(authorization: str | None, post_id: int) -> JSONResponse:
     try:
-        if not is_authorized(authorization):
-            return unauthorized("unauthorized")
+        user_id = _require_user_id(authorization)
+        if user_id is None:
+            return unauthorized("invalid_token")
 
-        post = next((p for p in POSTS if p["post_id"] == post_id), None)
+        post = posts_model.find_post(post_id)
         if post is None:
             return not_found("post_not_found")
 
-        if post["author"] != "starter":
+        if post["author_id"] != user_id:
             return forbidden("permission_denied")
 
-        POSTS.remove(post)
-        return ok("post_deleted", None)
+        posts_model.delete_post(post_id)
+        return ok("delete_post_success", None)
+
     except Exception:
         return server_error()
