@@ -55,7 +55,6 @@ def login(payload: dict) -> JSONResponse:
 
         token = users_model.create_session(user_id=user["id"])
 
-    
         posts = posts_model.list_posts(page=1, limit=10)
 
         data = {
