@@ -2,6 +2,7 @@
 import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles  
 from app.routes import router as api_router
 from app.common.exceptions import BusinessException, ErrorCodes
 from app.common.responses import fail
@@ -20,6 +21,12 @@ app = FastAPI(
 )
 
 
+# ==================== 정적 파일 서빙 ====================
+
+# 이용약관 등 정적 HTML 파일 서빙
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
 # ==================== 예외 핸들러 ====================
 
 @app.exception_handler(BusinessException)
@@ -30,7 +37,7 @@ async def business_exception_handler(request: Request, exc: BusinessException):
         extra={
             "path": request.url.path,
             "method": request.method,
-            "error_message": exc.message,  # ✅ 'message' 대신 'error_message'
+            "error_message": exc.message,
             "status_code": exc.status_code
         }
     )
@@ -58,7 +65,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
- 
+
     logger.info(f"Request: {request.method} {request.url.path}")
     response = await call_next(request)
     logger.info(f"Response: {response.status_code}")
@@ -74,7 +81,7 @@ app.include_router(api_router)
 
 @app.get("/health")
 def health_check():
- 
+
     return {"status": "healthy"}
 
 
