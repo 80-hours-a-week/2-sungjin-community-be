@@ -3,7 +3,8 @@ from app.common.exceptions import (
     InvalidCredentialsError, 
     UnauthorizedError,
     EmailAlreadyExistsError,
-    InvalidPasswordError
+    InvalidPasswordError,
+    NicknameAlreadyExistsError
 )
 from app.common.security import verify_password, hash_password
 from app.models import users_model
@@ -14,6 +15,10 @@ def signup(email: str, password: str, nickname: str) -> dict:
     # 이메일 중복 확인
     if users_model.is_email_exists(email):
         raise EmailAlreadyExistsError()
+    
+    # 닉네임 중복 확인
+    if users_model.is_nickname_exists(nickname):
+        raise NicknameAlreadyExistsError()
     
     # 비밀번호 검증 (8자 이상)
     if len(password) < 8:
