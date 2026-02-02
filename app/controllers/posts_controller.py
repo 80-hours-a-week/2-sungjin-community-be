@@ -29,17 +29,14 @@ def list_posts(page: int = 1, limit: int = 10, current_user_id: int = None) -> J
     return ok(message="read_posts_success", data=data)
 
 
-def create_post(user_id: int, payload: dict) -> JSONResponse:
-    title = (payload.get("title") or "").strip()
-    content = (payload.get("content") or "").strip()
-    image_url = payload.get("image_url")
+def create_post(user_id: int, title: str, content: str, image_url: str = None) -> JSONResponse:
+    title = (title or "").strip()
+    content = (content or "").strip()
 
- 
     if not title or not content:
         raise MissingRequiredFieldsError("제목, 내용을 모두 작성해주세요")
 
     _validate_title(title)
-
 
     post = posts_model.create_post(user_id, title, content, image_url)
     
@@ -60,7 +57,7 @@ def get_post(post_id: int, current_user_id: int = None) -> JSONResponse:
     return ok(message="read_detail_success", data=post)
 
 
-def update_post(user_id: int, post_id: int, payload: dict) -> JSONResponse:
+def update_post(user_id: int, post_id: int, title: str, content: str, image_url: str = None) -> JSONResponse:
     post = posts_model.find_post(post_id)
     if not post:
         raise PostNotFoundError()
@@ -69,15 +66,13 @@ def update_post(user_id: int, post_id: int, payload: dict) -> JSONResponse:
     if post["user_id"] != user_id:
         raise ForbiddenError("게시글 수정 권한이 없습니다.")
 
-    title = (payload.get("title") or "").strip()
-    content = (payload.get("content") or "").strip()
-    image_url = payload.get("image_url")
+    title = (title or "").strip()
+    content = (content or "").strip()
 
     if not title or not content:
         raise MissingRequiredFieldsError("제목, 내용을 모두 작성해주세요")
 
     _validate_title(title)
-
 
     updated = posts_model.update_post(post_id, title, content, image_url)
     if not updated:

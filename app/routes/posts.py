@@ -1,8 +1,23 @@
-from fastapi import APIRouter, Request, Query, Depends
+from fastapi import APIRouter, Request, Query, Depends, Body
 from app.controllers import posts_controller
 from app.common.deps import require_user_id, get_current_user_id_optional
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/posts", tags=["posts"])
+
+
+# ==================== DTO 정의 ====================
+class PostCreateRequest(BaseModel):
+    title: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1)
+    image_url: str | None = None
+
+
+class PostUpdateRequest(BaseModel):
+    title: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1)
+    image_url: str | None = None
+# =================================================
 
 
 @router.get("")
@@ -16,10 +31,15 @@ def list_posts(
 
 
 @router.post("")
-def create_post(payload: dict, request: Request):
+def create_post(payload: PostCreateRequest, request: Request):
 
     user_id = require_user_id(request)
-    return posts_controller.create_post(user_id, payload)
+    return posts_controller.create_post(
+        user_id=user_id, 
+        title=payload.title, 
+        content=payload.content, 
+        image_url=payload.image_url
+    )
 
 
 @router.get("/{post_id}")
@@ -32,10 +52,16 @@ def get_post(
 
 
 @router.put("/{post_id}")
-def update_post(post_id: int, payload: dict, request: Request):
+def update_post(post_id: int, payload: PostUpdateRequest, request: Request):
 
     user_id = require_user_id(request)
-    return posts_controller.update_post(user_id, post_id, payload)
+    return posts_controller.update_post(
+        user_id=user_id, 
+        post_id=post_id, 
+        title=payload.title, 
+        content=payload.content, 
+        image_url=payload.image_url
+    )
 
 
 @router.delete("/{post_id}")
