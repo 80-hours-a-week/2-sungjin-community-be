@@ -11,3 +11,4 @@ email-validator
 alembic
 PyJWT
 psycopg2-binary
+psycopg2-binary
