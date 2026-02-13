@@ -10,3 +10,4 @@ cryptography
 email-validator
 alembic
 PyJWT
+psycopg2-binary
