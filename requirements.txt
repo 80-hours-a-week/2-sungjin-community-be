@@ -13,3 +13,4 @@ PyJWT
 psycopg2-binary
 loguru
 mangum
+httpx
