@@ -119,3 +119,60 @@ def test_invalid_sort_rejected(client):
     res = client.get("/posts", params={"sort": "not-supported"})
     assert res.status_code == 400
     assert res.json()["message"] == "invalid_request_format"
+
+
+def test_direct_messages_lifecycle(client, unique_email, unique_nickname):
+    password = "Abcd1234!"
+    sender_email = unique_email("sender")
+    sender_nickname = unique_nickname("s")
+    recipient_email = unique_email("recipient")
+    recipient_nickname = unique_nickname("r")
+
+    sender_tokens = _signup_and_login(client, sender_email, password, sender_nickname)
+    recipient_tokens = _signup_and_login(client, recipient_email, password, recipient_nickname)
+
+    sender_headers = _auth_header(sender_tokens["access_token"])
+    recipient_headers = _auth_header(recipient_tokens["access_token"])
+
+    search_res = client.get(
+        "/messages/users",
+        headers=sender_headers,
+        params={"query": recipient_nickname[:3]},
+    )
+    assert search_res.status_code == 200
+    users = search_res.json()["data"]
+    recipient_user = next((item for item in users if item["email"] == recipient_email), None)
+    assert recipient_user is not None
+
+    send_res = client.post(
+        "/messages",
+        headers=sender_headers,
+        json={"recipient_id": recipient_user["id"], "content": "안녕하세요, DM 테스트입니다."},
+    )
+    assert send_res.status_code == 201
+    sent_payload = send_res.json()["data"]
+    assert sent_payload["is_mine"] is True
+    assert sent_payload["recipient"]["id"] == recipient_user["id"]
+
+    conversations_res = client.get("/messages/conversations", headers=recipient_headers)
+    assert conversations_res.status_code == 200
+    conversations = conversations_res.json()["data"]
+    assert len(conversations) == 1
+    assert conversations[0]["unread_count"] == 1
+    assert conversations[0]["partner"]["email"] == sender_email
+
+    bad_thread_res = client.get(f"/messages/with/{sent_payload['sender']['id']}", headers=sender_headers)
+    assert bad_thread_res.status_code == 400
+    assert bad_thread_res.json()["message"] == "invalid_request_format"
+
+    sender_user_id = sent_payload["sender"]["id"]
+    recipient_thread_res = client.get(f"/messages/with/{sender_user_id}", headers=recipient_headers)
+    assert recipient_thread_res.status_code == 200
+    thread = recipient_thread_res.json()["data"]
+    assert len(thread) == 1
+    assert thread[0]["content"] == "안녕하세요, DM 테스트입니다."
+    assert thread[0]["is_mine"] is False
+
+    conversations_after_res = client.get("/messages/conversations", headers=recipient_headers)
+    assert conversations_after_res.status_code == 200
+    assert conversations_after_res.json()["data"][0]["unread_count"] == 0
