@@ -1,4 +1,3 @@
+from app.models import comments_model, messages_model, posts_model, users_model
 
-from app.models import users_model, posts_model, comments_model
-
-__all__ = ["users_model", "posts_model", "comments_model"]
+__all__ = ["users_model", "posts_model", "comments_model", "messages_model"]

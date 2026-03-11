@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import db_models
@@ -16,7 +16,7 @@ from app.common.exceptions import BusinessException
 from app.common.responses import fail
 from app.core.logger import setup_logging
 from app.database import engine
-from app.routes import auth, comments, images, posts, users
+from app.routes import auth, comments, images, messages, posts, users
 
 
 def ensure_runtime_directories() -> None:
@@ -29,35 +29,21 @@ def ensure_runtime_directories() -> None:
     static_dir.mkdir(exist_ok=True)
 
 
-# -------------------------
-# Logging
-# -------------------------
-
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
-# -------------------------
-# FastAPI App & Lifespan
-# -------------------------
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: logging is already setup
     logger.info("Application starting up...")
     ensure_runtime_directories()
-
+    db_models.Base.metadata.create_all(bind=engine)
     yield
-    
-    # Shutdown
     logger.info("Application shutting down...")
 
-app = FastAPI(title="Community API", version="1.1.0", lifespan=lifespan)
 
+app = FastAPI(title="Community API", version="1.2.0", lifespan=lifespan)
 
-# -------------------------
-# CORS
-# -------------------------
 
 default_origins = "http://localhost:3001,http://127.0.0.1:3001"
 allow_origins = [
@@ -74,30 +60,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# -------------------------
-# Static / Uploads
-# -------------------------
-
 ensure_runtime_directories()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-
-# -------------------------
-# Routers
-# -------------------------
 
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(posts.router)
 app.include_router(comments.router)
 app.include_router(images.router)
+app.include_router(messages.router)
 
-
-# -------------------------
-# Health
-# -------------------------
 
 @app.get("/")
 async def root():
@@ -106,22 +79,17 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """BE-M4: DB 연결을 검증하여 ALB Health Check가 DB 장애를 감지하도록 함."""
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         return {"status": "healthy", "db": "ok"}
-    except Exception as e:
-        logger.error("Health check DB connection failed: %s", e)
+    except Exception as exc:
+        logger.error("Health check DB connection failed: %s", exc)
         return JSONResponse(
             content={"status": "unhealthy", "db": "error"},
             status_code=503,
         )
 
-
-# -------------------------
-# Middleware
-# -------------------------
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -130,10 +98,6 @@ async def log_requests(request: Request, call_next):
     logger.info("Response: %s", response.status_code)
     return response
 
-
-# -------------------------
-# Exception Handlers
-# -------------------------
 
 @app.exception_handler(BusinessException)
 async def handle_business_exception(_: Request, exc: BusinessException):

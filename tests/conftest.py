@@ -4,12 +4,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.database import SessionLocal, engine
-from app.db_models import Base, Comment, Like, Post, PostTag, Session, Tag, User
+from app.db_models import Base, Comment, DirectMessage, Like, Post, PostTag, Session, Tag, User
 from app.main import app
 
-# 테스트용 DB 테이블 생성 (SQLite in-memory 또는 파일 DB)
 Base.metadata.create_all(bind=engine)
-
 
 
 @pytest.fixture
@@ -20,10 +18,9 @@ def client():
 
 @pytest.fixture(autouse=True)
 def clean_db():
-    # Keep test isolation simple and explicit.
     db = SessionLocal()
     try:
-        for table_model in [Session, Like, Comment, PostTag, Post, Tag, User]:
+        for table_model in [DirectMessage, Session, Like, Comment, PostTag, Post, Tag, User]:
             db.query(table_model).delete()
         db.commit()
     finally:
