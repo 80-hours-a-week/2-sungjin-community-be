@@ -15,7 +15,7 @@ This backend repository owns the following responsibilities:
 
 | Area | Scope |
 | --- | --- |
-| API Layer | auth, users, posts, comments, image-related endpoints |
+| API Layer | auth, users, posts, comments, direct messages, image-related endpoints |
 | Data Layer | SQLAlchemy models, session management, DB health check |
 | Security | password hashing, token-based auth flow, request validation |
 | Runtime | FastAPI app startup, static/uploads mounting, health endpoints |
@@ -87,6 +87,7 @@ This backend repository owns the following responsibilities:
 
 ### User Management / 사용자 관리
 - my profile read/update
+- 1:1 direct message thread list/read/send
 - password change
 - account deletion
 
@@ -218,6 +219,7 @@ The paired frontend repository provides higher-level smoke validation via:
 | Users | `/users/me`, `/users/me/password`, account management routes |
 | Posts | post list/detail/create/update/delete |
 | Comments | comment create/list/update/delete |
+| Messages | `/messages/users`, `/messages/conversations`, `/messages/with/{user_id}`, `/messages` |
 | Images | image-related upload helpers and mounted static paths |
 
 ## 배포 자산 | Delivery Assets
