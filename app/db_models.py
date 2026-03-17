@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -21,6 +21,18 @@ class User(Base):
     comments = relationship("Comment", back_populates="owner", cascade="all, delete-orphan")
     likes = relationship("Like", back_populates="owner", cascade="all, delete-orphan")
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+    sent_messages = relationship(
+        "DirectMessage",
+        foreign_keys="DirectMessage.sender_id",
+        back_populates="sender",
+        cascade="all, delete-orphan",
+    )
+    received_messages = relationship(
+        "DirectMessage",
+        foreign_keys="DirectMessage.recipient_id",
+        back_populates="recipient",
+        cascade="all, delete-orphan",
+    )
 
 
 class Post(Base):
@@ -103,3 +115,19 @@ class Session(Base):
     created_at = Column(DateTime, default=func.now())
 
     user = relationship("User", back_populates="sessions")
+
+
+class DirectMessage(Base):
+    __tablename__ = "direct_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    recipient_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    is_read = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime, nullable=True)
+
+    sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
+    recipient = relationship("User", foreign_keys=[recipient_id], back_populates="received_messages")

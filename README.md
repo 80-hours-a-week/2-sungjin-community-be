@@ -1,491 +1,282 @@
+# Community Backend Portfolio | 아무 말 대잔치 Backend
 
-# 🎭 아무 말 대잔치 - 커뮤니티 백엔드
-### FastAPI 기반 RESTful API 커뮤니티 백엔드 서버
+## 프로젝트 개요 | Project Overview
+`2-sungjin-community-be`는 **FastAPI + SQLAlchemy** 기반의 community backend API repository입니다.
+이 저장소는 CRUD API 구현에만 머물지 않고, **database abstraction, authentication, containerization, Lambda image delivery, ECS rollout, EC2 deployment readiness, Kubernetes compatibility**까지 포함하도록 구성되었습니다.
 
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat&logo=fastapi&logoColor=white)
-![bcrypt](https://img.shields.io/badge/Security-bcrypt-525252?style=flat)
+This repository was developed as a portfolio-grade backend project. The focus was to demonstrate not only API implementation, but also how a backend can be packaged, verified, deployed, and operated across multiple runtime targets.
 
----
+- Backend Repo: `https://github.com/sungjin9288/2-sungjin-community-be`
+- Frontend Repo: `https://github.com/sungjin9288/2-sungjin-community-fe`
+- Runtime note: cloud runtime resources used for validation were intentionally **torn down on 2026-03-11** to avoid unnecessary cost. The source code, deployment scripts, workflow definitions, and runbooks remain as portfolio evidence.
 
-## 📋 목차
-1. [프로젝트 소개](#-프로젝트-소개)
-2. [주요 기능](#-주요-기능)
-3. [기술 스택](#%EF%B8%8F-기술-스택)
-4. [프로젝트 구조](#-프로젝트-구조)
-5. [설치 및 실행](#-설치-및-실행)
-6. [AWS 빅뱅 과제 완료 체크](#-aws-빅뱅-과제-완료-체크)
-7. [API 문서](#-api-문서)
-8. [보안](#-보안)
-9. [실무 적용 사항](#-실무-적용-사항)
-10. [라이선스](#-라이선스)
+## 역할 정의 | Repository Role
+This backend repository owns the following responsibilities:
 
----
+| Area | Scope |
+| --- | --- |
+| API Layer | auth, users, posts, comments, direct messages, image-related endpoints |
+| Data Layer | SQLAlchemy models, session management, DB health check |
+| Security | password hashing, token-based auth flow, request validation |
+| Runtime | FastAPI app startup, static/uploads mounting, health endpoints |
+| Delivery | Docker image build, ECS task deployment support, Lambda container image support |
+| Verification | pytest regression coverage, health checks, deployment smoke readiness |
 
-## 🎯 프로젝트 소개
-**아무 말 대잔치**는 사용자들이 자유롭게 소통할 수 있는 커뮤니티 플랫폼입니다.
+## 핵심 성과 | Key Outcomes
+- Built a **FastAPI REST API** supporting the full community lifecycle.
+- Added a **database-driven health check** so deployment targets can fail fast when DB connectivity is broken.
+- Made the backend **database-configurable** through `DATABASE_URL`, enabling SQLite for local validation and MySQL/PostgreSQL-compatible drivers for deployment targets.
+- Added **runtime directory bootstrap** so containerized startup does not fail when `uploads/` or `static/` paths are missing.
+- Packaged the backend for multiple targets:
+  - EC2 + Docker Compose
+  - ECS Fargate
+  - Lambda container image
+  - Kubernetes-compatible container runtime
+- Verified integration with the frontend repository and GitHub Actions delivery flows.
 
-### 프로젝트 목표
-- ✅ **RESTful API 설계 원칙 준수**
-- ✅ **계층 분리 아키텍처 구현** (Route-Controller-Model)
-- ✅ **실무 수준의 보안 및 에러 처리**
-- ✅ **체계적인 문서화**
+## 기술 스택 | Tech Stack
 
----
+### Application Layer
+- `Python 3.11+`
+- `FastAPI`
+- `Uvicorn`
+- `Pydantic`
 
-## ✨ 주요 기능
+### Data / Persistence
+- `SQLAlchemy`
+- `SQLite` for local/staging validation
+- `PyMySQL` and `psycopg2-binary` for MySQL/PostgreSQL-compatible targets
+- `Alembic` included in dependencies for migration-ready evolution
 
-### 🔐 인증 & 회원 관리
-- **회원가입 / 로그인 / 로그아웃**
-- **bcrypt 비밀번호 암호화**
-- **쿠키 기반 세션 인증**
-- 프로필 이미지 업로드
-- 회원정보 수정 / 비밀번호 변경
+### Security / Auth
+- `bcrypt`
+- `passlib`
+- `PyJWT`
 
-### 📝 게시글 관리
-- **게시글 CRUD** (생성, 조회, 수정, 삭제)
-- **페이지네이션** (page, limit)
-- 조회수 자동 증가
-- 작성자 검증
+### Delivery / Platform
+- `Docker`
+- `AWS ECS Fargate`
+- `AWS Lambda (container image)`
+- `AWS EC2`
+- `Kubernetes-compatible deployment templates`
 
-### 💬 댓글 시스템
-- 댓글 작성 / 조회 / 수정 / 삭제
-- 게시글별 댓글 목록
-- 작성자 검증
+## 아키텍처 | Architecture
 
-### ❤️ 좋아요 기능
-- 좋아요 / 좋아요 취소
-- 중복 좋아요 방지
-- 좋아요 수 집계
+### Request path
+1. Client sends request to FastAPI application.
+2. Route layer validates request payload via Pydantic.
+3. Controller/model layer executes business logic.
+4. SQLAlchemy session accesses the configured database.
+5. Response helpers return a consistent API envelope.
 
-### 🖼️ 이미지 업로드
-- 프로필 이미지 업로드
-- 게시글 이미지 업로드
-- **파일 확장자 검증**
-- **UUID 기반 파일명 생성**
+### Runtime-specific behavior
+- `lifespan()` ensures startup/shutdown logging.
+- `ensure_runtime_directories()` creates `uploads/`, `uploads/profile/`, `uploads/post/`, and `static/` before mounts.
+- `/health` performs a real DB connectivity check using `SELECT 1`.
+- `/uploads` and `/static` are mounted as static paths for image/content serving.
 
-### 📄 정적 페이지
-- 이용약관 HTML 서빙
-- 개인정보처리방침 HTML 서빙
+## 주요 기능 | Functional Scope
 
----
+### Authentication / 인증
+- signup
+- login
+- token refresh
+- logout
+- email duplication check
+- nickname duplication check
 
-## 🛠️ 기술 스택
+### User Management / 사용자 관리
+- my profile read/update
+- 1:1 direct message thread list/read/send
+- password change
+- account deletion
 
-### Backend
-- **Language**: Python 3.11+
-- **Framework**: FastAPI 0.115+
-- **Server**: Uvicorn (ASGI 서버)
+### Post Domain / 게시글
+- create, read, update, delete
+- pagination
+- detail read with count-related handling
+- likes integration
 
-### Security
-- **Hashing**: bcrypt (비밀번호 해싱)
-- **Session**: HttpOnly Cookies (XSS 방어), SameSite Cookies (CSRF 방어)
+### Comment Domain / 댓글
+- create, update, delete
+- list by post
+- author ownership checks
 
-### Storage
-- **Database**: In-Memory (개발 환경 - JSON 데이터)
-- **File System**: Local Storage (이미지 저장)
+### Static & Uploads / 정적 리소스
+- terms/privacy static serving
+- uploads mount for image delivery
+- Lambda container entrypoint for image-oriented runtime packaging
 
-### Development
-- **Validation**: Pydantic (데이터 검증)
-- **Logging**: Python Logging (구조화된 로그)
+## 현재 코드 기준 기술 포인트 | Implementation Notes
 
----
+### Database configuration
+`app/database.py` resolves the database from environment configuration:
 
-## 📁 프로젝트 구조
-
-```bash
-2-sungjin-community-be/
-├── app/
-│   ├── common/                 # 공통 모듈
-│   │   ├── __init__.py
-│   │   ├── auth.py            # 인증 헬퍼
-│   │   ├── deps.py            # 의존성 주입
-│   │   ├── exceptions.py      # 커스텀 예외
-│   │   ├── responses.py       # 응답 포맷
-│   │   └── security.py        # 비밀번호 해싱
-│   │
-│   ├── controllers/            # 비즈니스 로직
-│   │   ├── __init__.py
-│   │   ├── auth_controller.py
-│   │   ├── users_controller.py
-│   │   ├── posts_controller.py
-│   │   └── comments_controller.py
-│   │
-│   ├── models/                 # 데이터 모델
-│   │   ├── __init__.py
-│   │   ├── users_model.py
-│   │   ├── posts_model.py
-│   │   └── comments_model.py
-│   │
-│   ├── routes/                 # API 라우터
-│   │   ├── __init__.py
-│   │   ├── auth.py
-│   │   ├── users.py
-│   │   ├── posts.py
-│   │   ├── comments.py
-│   │   └── images.py
-│   │
-│   └── main.py                 # 애플리케이션 진입점
-│
-├── static/                     # 정적 파일
-│   ├── uploads/               # 업로드된 이미지
-│   └── terms/                 # 이용약관 HTML
-│       ├── service.html
-│       └── privacy.html
-│
-├── requirements.txt            # Python 의존성
-├── .gitignore
-├── README.md
-├── RUN.md                      # 실행 가이드
-└── CHANGELOG.md                # 변경 이력
+```python
+DEFAULT_SQLITE_URL = "sqlite:///./community.db"
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_SQLITE_URL)
 ```
 
----
+This means the same application can run:
+- locally with SQLite
+- in containerized validation with SQLite-backed volume
+- in production-like environments with MySQL/PostgreSQL-compatible URLs
 
-## 🚀 설치 및 실행
+### Startup hardening
+A deployment issue was fixed by ensuring runtime directories are created before `StaticFiles` mounts are initialized.
 
-### 1. 저장소 클론
+Relevant file:
+- `app/main.py`
+
+## 프로젝트 구조 | Repository Structure
+
+```text
+2-sungjin-community-be/
+├── app/
+│   ├── common/                    # shared helpers, response/exception utilities
+│   ├── controllers/               # business logic orchestration
+│   ├── core/                      # logging and shared runtime utilities
+│   ├── models/                    # domain access layer
+│   ├── routes/                    # FastAPI routers
+│   ├── database.py                # engine / session configuration
+│   ├── db_models.py               # SQLAlchemy ORM models
+│   ├── lambda_handler.py          # Lambda container entrypoint
+│   └── main.py                    # FastAPI application bootstrap
+├── deploy/ecs/                    # ECS task definition template assets
+├── scripts/                       # deployment helpers
+├── tests/                         # pytest regression coverage
+├── Dockerfile
+├── Dockerfile.lambda
+├── requirements.txt
+└── README.md
+```
+
+## 로컬 실행 | Local Development
+
+### Prerequisites
+- `Python 3.11+`
+- optional virtual environment tooling
+
+### Install
 ```bash
 git clone https://github.com/sungjin9288/2-sungjin-community-be.git
 cd 2-sungjin-community-be
-```
-
-### 2. 가상환경 생성 및 활성화
-```bash
-# Windows
-python -m venv .venv
-.venv\Scripts\activate
-
-# macOS/Linux
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-### 3. 의존성 설치
-```bash
 pip install -r requirements.txt
 ```
-*`requirements.txt` 주요 패키지:*
-- `fastapi`
-- `uvicorn[standard]`
-- `pydantic`
-- `python-multipart`
-- `bcrypt`
 
-### 4. 서버 실행
+### Environment
+Example local environment:
+
+```env
+DATABASE_URL=sqlite:///./community.db
+CORS_ALLOW_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+```
+
+### Run
 ```bash
-# 개발 모드 (자동 재시작)
 uvicorn app.main:app --reload
+```
 
-# 프로덕션 모드
+Production-style local run:
+```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 5. 서버 확인
-- ✅ **서버**: `http://localhost:8000`
-- 📖 **API 문서**: `http://localhost:8000/docs`
-- 📊 **Redoc 문서**: `http://localhost:8000/redoc`
+Open:
+- `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
----
+## 테스트 / 검증 | Test & Verification
 
-## ✅ AWS 빅뱅 과제 완료 체크
-
-기준일: `2026-02-25`
-
-### 요구사항 충족 여부
-
-| 요구사항 | 상태 | 구현/증빙 |
-| :--- | :--- | :--- |
-| 다중 EC2로 FE/BE 분리 | ✅ 완료 | FE/BE 별도 인스턴스 운영 (`infra/aws-bigbang`) |
-| VPC / IAM / SG / EIP / EC2 | ✅ 완료 | Terraform 리소스 적용 |
-| EFS / CloudTrail / CloudWatch | ✅ 완료 | EFS 마운트 + CloudTrail + CloudWatch 로그/알람 |
-| RDS / S3 / API Gateway / Lambda | ✅ 완료 | RDS(PostgreSQL), S3 업로드, API GW + Lambda 업로드 URL 발급 |
-| ELB 적용 | ✅ 완료 | FE/BE ALB + Target Group + Health Check |
-| 파일 업로드는 Lambda + API Gateway 사용 | ✅ 완료 | `POST /upload-url` -> pre-signed URL -> S3 PUT 검증 완료 |
-
-### 런타임 검증 결과
-
-- Backend ALB Health: `GET /health` -> `200 OK`
-- 회원가입 API: `POST /auth/signup` -> `201 Created` 확인
-- 통합 API 테스트(`test:integration`) 통과
-- 업로드 테스트(`test:upload`) 통과
-
-### 인프라 상태 확인 명령
-
+### Pytest
 ```bash
-cd infra/aws-bigbang
-terraform state list | sort
+pytest -q
 ```
 
----
-### 추가 구현 파일 (Miniquest 6/8)
+### Health check
+```bash
+curl -s http://localhost:8000/health
+```
 
-- Lambda 컨테이너 진입점: `app/lambda_handler.py`
-- Lambda 컨테이너 Dockerfile: `Dockerfile.lambda`
-- Lambda 이미지 배포 스크립트: `scripts/deploy-lambda-image.sh`
-- ECS Fargate CD 워크플로우: `.github/workflows/deploy-ecs-fargate.yml`
-- Lambda Image CD 워크플로우: `.github/workflows/deploy-lambda-image.yml`
-- Backend CI 워크플로우: `.github/workflows/ci-backend.yml`
-
----
-
-
-## 📖 API 문서
-
-### Swagger UI
-`http://localhost:8000/docs`
-- 모든 API 엔드포인트 확인
-- 실시간 테스트 가능
-- 요청/응답 스키마 확인
-
-### API 엔드포인트 요약
-
-#### 🔐 인증 (Auth)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| POST | `/auth/login` | 로그인 |
-| POST | `/auth/logout` | 로그아웃 |
-
-#### 👤 회원 (Users)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| POST | `/users/signup` | 회원가입 |
-| GET | `/users/me` | 내 정보 조회 |
-| PUT | `/users/me` | 회원정보 수정 |
-| PUT | `/users/me/password` | 비밀번호 변경 |
-| DELETE | `/users/me` | 회원 탈퇴 |
-
-#### 📝 게시글 (Posts)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| GET | `/posts` | 게시글 목록 (페이지네이션) |
-| POST | `/posts` | 게시글 작성 |
-| GET | `/posts/{post_id}` | 게시글 상세 조회 |
-| PUT | `/posts/{post_id}` | 게시글 수정 |
-| DELETE | `/posts/{post_id}` | 게시글 삭제 |
-| POST | `/posts/{post_id}/likes` | 좋아요 |
-| DELETE | `/posts/{post_id}/likes` | 좋아요 취소 |
-
-#### 💬 댓글 (Comments)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| GET | `/posts/{post_id}/comments` | 댓글 목록 |
-| POST | `/posts/{post_id}/comments` | 댓글 작성 |
-| PUT | `/comments/{comment_id}` | 댓글 수정 |
-| DELETE | `/comments/{comment_id}` | 댓글 삭제 |
-
-#### 🖼️ 이미지 (Images)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| POST | `/images/profile` | 프로필 이미지 업로드 |
-| POST | `/images/post` | 게시글 이미지 업로드 |
-
-### API 응답 예시
-**성공 응답:**
+Expected response:
 ```json
-{
-  "message": "signup_success",
-  "data": {
-    "id": 1,
-    "email": "user@example.com",
-    "nickname": "사용자"
-  }
-}
+{"status":"healthy","db":"ok"}
 ```
 
-**에러 응답:**
-```json
-{
-  "message": "email_already_exists",
-  "data": null
-}
-```
+### Frontend-integrated verification
+The paired frontend repository provides higher-level smoke validation via:
+- `npm run test:integration`
+- `npm run test:upload`
 
----
+## API Surface Summary | API 요약
 
-## 🔒 보안 (Security)
+| Domain | Endpoints |
+| --- | --- |
+| Auth | `/auth/signup`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/check-email`, `/auth/check-nickname` |
+| Users | `/users/me`, `/users/me/password`, account management routes |
+| Posts | post list/detail/create/update/delete |
+| Comments | comment create/list/update/delete |
+| Messages | `/messages/users`, `/messages/conversations`, `/messages/with/{user_id}`, `/messages` |
+| Images | image-related upload helpers and mounted static paths |
 
-### 비밀번호 보안
-- **bcrypt 해싱 알고리즘** 사용
-- `rounds=12` (업계 표준)
-- 72바이트 제한 처리
-```python
-import bcrypt
+## 배포 자산 | Delivery Assets
 
-# 해싱
-salt = bcrypt.gensalt(rounds=12)
-hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+### Containerization
+- `Dockerfile`
+- `.dockerignore`
+- `Dockerfile.lambda`
 
-# 검증
-is_valid = bcrypt.checkpw(password.encode('utf-8'), hashed)
-```
+### Deployment Helpers
+- `scripts/deploy-lambda-image.sh`
+- `scripts/ec2-bluegreen-be-deploy.sh`
+- `deploy/ecs/task-definition.template.json`
 
-### 세션 보안
-- **HttpOnly 쿠키** (JavaScript 접근 불가)
-- **SameSite=lax** (CSRF 공격 방어)
-- UUID v4 기반 세션 ID
-- 7일 만료 시간 설정
+### Workflow / CI/CD Assets
+- `.github/workflows/ci-backend.yml`
+- `.github/workflows/deploy-lambda-image.yml`
+- `.github/workflows/deploy-ecs-fargate.yml`
+- blue/green support assets in the paired frontend repository
 
-### 파일 업로드 보안
-- **파일 확장자 검증** (`.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`)
-- **UUID 기반 고유 파일명**으로 저장 (파일명 충돌 및 조작 방지)
+## Infra / Delivery Coverage | 수행 범위
 
-### 입력 검증
-- 이메일 형식 검증
-- 비밀번호 복잡도 정책 (8자 이상)
-- 닉네임 길이 제한 (2-10자)
-- 페이지네이션 범위 검증
+This backend participated in validating the following runtime targets together with the frontend repository:
 
----
+| Target | Status | Notes |
+| --- | --- | --- |
+| Docker image build | Done | backend image build validated |
+| Docker Compose on EC2 | Done | FE/BE combined compose deployment validated |
+| ECS Fargate | Done | backend task definition and service rollout validated |
+| Lambda container image | Done | image packaging and deployment workflow prepared/validated |
+| Kubernetes (staging validation) | Done | backend image deployed to EKS staging during validation |
+| Blue/Green deployment support | Done | backend deployment helper assets prepared |
 
-## 💼 실무 적용 사항 (Best Practices)
+## Portfolio Value | 포트폴리오 관점의 강점
+This repository demonstrates:
 
-### 1. 아키텍처 패턴
-- **Route-Controller-Model 3계층 분리**를 통해 유지보수성 향상
-- **의존성 주입 (Dependency Injection)** 활용
-- **관심사 분리 (Separation of Concerns)** 원칙 준수
+- API-first backend design
+- runtime configurability instead of hardcoded infra coupling
+- production-style startup hardening
+- health-check-aware deployment readiness
+- multi-target packaging strategy (EC2 / ECS / Lambda / K8s)
+- cost-aware operations after validation
 
-### 2. 코드 품질
-- **Type Hints** 적극 사용으로 개발 생산성 향상
-- **Docstrings** 작성을 통한 문서화
-- **일관된 에러 처리 (try-except)** 및 커스텀 예외 클래스 사용
-- **DRY (Don't Repeat Yourself)** 원칙 준수
+## Cost Control / 비용 정리 원칙
+Because this project is a personal portfolio artifact, not a commercial service, the validated cloud runtime resources were removed after verification.
 
-### 3. 로깅 시스템
-```python
-import logging
-logger = logging.getLogger(__name__)
+What remains in Git:
+- backend source code
+- Docker and Lambda packaging assets
+- ECS deployment template
+- CI/CD workflow definitions
+- integration-compatible app structure
 
-# 구조화된 로그
-logger.info(
-    f"Request: {method} {path}",
-    extra={"user_id": user_id, "status": 200}
-)
-```
+## Related Repository & Documents
+- Frontend repo: `https://github.com/sungjin9288/2-sungjin-community-fe`
+- Frontend infra report: `../2-sungjin-community-fe/docs/community-infra-reliability-report.md`
+- Frontend deployment checklist: `../2-sungjin-community-fe/docs/deployment-execution-checklist.md`
 
-### 4. Git 커밋 규칙 (Conventional Commits)
-- `feat`: 새로운 기능 추가
-- `fix`: 버그 수정
-- `refactor`: 코드 리팩토링
-- `docs`: 문서 수정
-- `test`: 테스트 추가
-- `chore`: 설정 등 기타 작업
-
----
-
-## 📚 학습 포인트
-
-### 백엔드 개발
-- ✅ RESTful API 설계
-- ✅ 비동기 프로그래밍 (async/await)
-- ✅ 인증/인가 구현 (Session/Cookie)
-- ✅ 파일 업로드 처리
-- ✅ 데이터 검증 (Pydantic)
-
-### 보안
-- ✅ 비밀번호 해싱 (bcrypt)
-- ✅ 세션 관리 보안 (HttpOnly, SameSite)
-- ✅ XSS/CSRF 방어 고려
-- ✅ 입력값 검증
-
-### 아키텍처
-- ✅ 계층 분리 패턴
-- ✅ 의존성 주입 (DI)
-- ✅ 에러 핸들링 전략
-- ✅ 로깅 시스템 구축
-
----
-
-## 🙏 감사의 말
-이 프로젝트를 통해 백엔드 개발의 전반적인 흐름과 보안, 아키텍처의 중요성을 깊이 이해할 수 있었습니다.
-
----
-Copyright © 2026 Sungjin An. All rights reserved.
-
----
-
-## 2026 Refactor Update
-
-This project has been refactored with a focus on security, consistency, and feed scalability.
-
-### Core Changes
-
-- DB connection is now environment-based (`DATABASE_URL`) with local SQLite fallback.
-- Session storage moved from in-memory map to DB table (`sessions`).
-- Logout now invalidates server-side session and clears cookie.
-- Post feed now supports:
-  - sorting: `latest`, `hot`, `discussed`
-  - tag filter: `GET /posts?tag=python`
-  - trending endpoint: `GET /posts/trending`
-- Like duplication is protected by DB-level unique constraint.
-- Unified API error response format via global exception handlers.
-
-### New Environment Variables
-
-- `DATABASE_URL`
-- `AUTO_CREATE_TABLES` (`true`/`false`)
-- `CORS_ALLOW_ORIGINS` (comma-separated)
-- `SESSION_COOKIE_NAME`
-- `SESSION_COOKIE_MAX_AGE` (seconds)
-- `SESSION_COOKIE_SECURE` (`true`/`false`)
-- `SESSION_COOKIE_SAMESITE` (`lax`/`strict`/`none`)
-
-### Migration (Alembic)
-
-```bash
-pip install -r requirements.txt
-alembic upgrade head
-```
-
-Current baseline migration:
-- `migrations/versions/20260211_000001_initial_schema.py`
-
-### Regression Tests
-
-```bash
-python -m pytest -q
-```
-
-Added test coverage includes:
-- auth session lifecycle (login/logout/session invalidation)
-- password change guard
-- posts tags/filter/trending
-- like idempotency / duplicate like blocking
-- invalid sort parameter handling
-
-### Existing DB Note
-
-If tables were already created before Alembic setup, `alembic upgrade head` can fail with "table already exists".
-In that case, register current schema as baseline first:
-
-```bash
-alembic stamp 20260211_000001
-```
-
-After that, use:
-
-```bash
-alembic upgrade head
-```
-
-### Auth Model Update (JWT)
-
-Authentication has been upgraded from cookie-session to token-based auth.
-
-- `POST /auth/login` now returns:
-  - `access_token`
-  - `refresh_token`
-  - `token_type` (`bearer`)
-  - `expires_in`
-- Protected endpoints require:
-  - `Authorization: Bearer <access_token>`
-- Token renewal:
-  - `POST /auth/refresh` with `refresh_token`
-- Logout:
-  - `POST /auth/logout` with optional `refresh_token` (revokes refresh token if provided)
-
-JWT-related environment variables:
-- `JWT_SECRET_KEY` (recommend 32+ chars)
-- `JWT_ALGORITHM` (default `HS256`)
-- `ACCESS_TOKEN_EXPIRE_MINUTES` (default `30`)
-- `REFRESH_TOKEN_TTL_DAYS` (default `14`)
+## License
+This project is released under the `MIT` License unless stated otherwise.
